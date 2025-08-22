@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e97f907136fcf164c83c93295b00f330, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: 
+  DefaultScheme: http
+  DefaultHost: 127.0.0.1
+  DefaultPort: 1002
+  ServerKey: defaultkey
+  UseSSLForSocket: 0
+  MatchmakingQuery: +properties.engine:unity
+  MinCount: 2
+  MaxCount: 2
+  TurnTimeoutSeconds: 30
+  TickRate: 5
+  MatchName: tictactoe
+  OpState: 1
+  OpMove: 2
+  OpError: 3
+  OpGameOver: 4
+  GameBoardKey: GameBoard
+  GameplayLabel: gameplay
+  RejoinEnabled: 1
+  RejoinTimeoutSeconds: 10

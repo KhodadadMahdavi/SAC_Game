@@ -1,0 +1,28 @@
+pluginManagement {
+  repositories {
+    maven { url "https://maven.aliyun.com/repository/google" }
+    maven { url "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/" }
+    maven { url "https://maven.google.com" }
+    maven { url "https://dl.google.com/android/maven2/" }
+    google()
+    mavenCentral()
+    // gradlePluginPortal() // keep disabled while offline/blocked
+  }
+}
+
+include ':launcher', ':unityLibrary'
+**INCLUDES**
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+  repositories {
+    maven { url "https://maven.aliyun.com/repository/google" }
+    maven { url "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/" }
+    maven { url "https://maven.google.com" }
+    maven { url "https://dl.google.com/android/maven2/" }
+    google()
+    mavenCentral()
+    flatDir {
+            dirs "${project(':unityLibrary').projectDir}/libs"
+        }
+  }
+}
