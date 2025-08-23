@@ -47,9 +47,63 @@ The server runs at **5 Hz**. For each turn it sets `deadline_tick = current_tick
 
 If the socket reconnects while a match is still alive, the client attempts to **rejoin** the last `matchId`. On success it receives a full snapshot, resumes play, and shows a brief **rejoin banner** which auto‑hides.
 
-## Addressables content flow
+## Remote Addressables in this project
 
-Addressables are initialized at app start. The client checks for catalog updates, downloads any deltas, and then loads the board prefab by key (e.g., `"GameBoard"`). New visual iterations of the board can be shipped by updating the remote catalog and content; the app will fetch them on the next launch (or at runtime if you trigger an update).
+This project uses Unity Addressables to deliver gameplay content remotely so the app can adopt new board visuals/logic without republishing. Concretely, only the gameplay prefab(s) are remote: GameBoard.prefab (and its CellButton children). All core UI remains local for instant boot.
+
+What the client does at runtime (from AddressablesBootstrap)
+
+At startup the client initializes Addressables, checks for a new remote catalog, applies updates if present, and then loads the board prefab by key from GameConfigSO.GameBoardKey (default "GameBoard"). After loading, it raises an event so gameplay can instantiate the board.
+
+// AddressablesBootstrap.cs (essentials)
+using UnityEngine.AddressableAssets;
+
+async void Start()
+{
+    await Addressables.InitializeAsync().Task;
+
+    var catalogs = await Addressables.CheckForCatalogUpdates().Task;
+    if (catalogs != null && catalogs.Count > 0)
+        await Addressables.UpdateCatalogs(catalogs).Task;
+
+    string key = config ? config.GameBoardKey : "GameBoard";
+    var boardPrefab = await Addressables.LoadAssetAsync<GameObject>(key).Task;
+    if (boardPrefab == null) throw new System.Exception($"Missing Addressable '{key}'");
+
+    OnGameplayAssetsReady?.Invoke(boardPrefab);
+}
+
+TTTMatchController subscribes to that event, spawns the board under BoardPlaceholder, and wires cell clicks to send moves:
+
+// TTTMatchController.Init(...)
+addrBootstrap.OnGameplayAssetsReady += prefab =>
+{
+    if (_boardGO) Destroy(_boardGO);
+    _boardGO = Instantiate(prefab, boardParent);
+    _board = _boardGO.GetComponent<BoardView>();
+    if (_board)
+        _board.OnCellClicked += async i => await OnCellClicked(i);
+};
+
+How we build and host (project‑specific)
+
+In the Addressables Groups window we keep two group categories:
+
+UI.Local → static, non‑remote UI assets (CanvasRoot, panels, Toast).
+
+Gameplay.Remote → GameBoard.prefab (key "GameBoard") and CellButton.prefab with Remote Build/Load Paths.
+
+Build Addressables (Default Build Script). Upload the generated ServerData/<Platform> to your HTTP host/CDN and set your Remote Load Path accordingly in the Addressables profile. On next app start, the bootstrap above will pull the updated catalog and load the new prefab.
+
+Updating content in production
+
+When you edit the remote board prefab, run Build → Update a Previous Build against the last catalog. Upload the new ServerData/<Platform> output. Clients will detect the catalog change in CheckForCatalogUpdates() and download only the changed bundles.
+
+Notes specific to this client
+
+The board prefab is loaded once per app run; we do not unload it. If you add screen transitions that recreate gameplay, call Addressables.ReleaseInstance(instance) when destroying it.
+
+Errors during init surface as a user toast; the game can still connect (UI is local), but gameplay will not spawn until the prefab loads successfully.
 
 ---
 
