@@ -49,12 +49,13 @@ If the socket reconnects while a match is still alive, the client attempts to **
 
 ## Remote Addressables in this project
 
-This project uses Unity Addressables to deliver gameplay content remotely so the app can adopt new board visuals/logic without republishing. Concretely, only the gameplay prefab(s) are remote: GameBoard.prefab (and its CellButton children). All core UI remains local for instant boot.
+This project uses Unity Addressables to deliver gameplay content remotely so the app can adopt new board visuals/logic without republishing. Concretely, only the gameplay prefab(s) are remote: `GameBoard.prefab` (and its `CellButton` children). All core UI remains local for instant boot.
 
-What the client does at runtime (from AddressablesBootstrap)
+What the client does at runtime (from `AddressablesBootstrap.cs`)
 
-At startup the client initializes Addressables, checks for a new remote catalog, applies updates if present, and then loads the board prefab by key from GameConfigSO.GameBoardKey (default "GameBoard"). After loading, it raises an event so gameplay can instantiate the board.
+At startup the client initializes Addressables, checks for a new remote catalog, applies updates if present, and then loads the board prefab by key from `GameConfigSO.GameBoardKey` (default "GameBoard"). After loading, it raises an event so gameplay can instantiate the board.
 
+```csharp
 // AddressablesBootstrap.cs (essentials)
 using UnityEngine.AddressableAssets;
 
@@ -72,9 +73,11 @@ async void Start()
 
     OnGameplayAssetsReady?.Invoke(boardPrefab);
 }
+```
 
-TTTMatchController subscribes to that event, spawns the board under BoardPlaceholder, and wires cell clicks to send moves:
+`TTTMatchController` subscribes to that event, spawns the board under `BoardPlaceholder`, and wires cell clicks to send moves:
 
+```csharp
 // TTTMatchController.Init(...)
 addrBootstrap.OnGameplayAssetsReady += prefab =>
 {
@@ -84,29 +87,30 @@ addrBootstrap.OnGameplayAssetsReady += prefab =>
     if (_board)
         _board.OnCellClicked += async i => await OnCellClicked(i);
 };
+```
 
-How we build and host (project‑specific)
+### How we build and host (project‑specific)
 
 In the Addressables Groups window we keep two group categories:
 
-UI.Local → static, non‑remote UI assets (CanvasRoot, panels, Toast).
+`UI.Local` → static, non‑remote UI assets (`CanvasRoot`, panels, Toast).
 
-Gameplay.Remote → GameBoard.prefab (key "GameBoard") and CellButton.prefab with Remote Build/Load Paths.
+`Gameplay.Remote` → `GameBoard.prefab` (key "GameBoard") and `CellButton.prefab` with Remote Build/Load Paths.
 
-Build Addressables (Default Build Script). Upload the generated ServerData/<Platform> to your HTTP host/CDN and set your Remote Load Path accordingly in the Addressables profile. On next app start, the bootstrap above will pull the updated catalog and load the new prefab.
+Build Addressables (Default Build Script). Upload the generated `ServerData/<Platform>` to your HTTP host/CDN and set your Remote Load Path accordingly in the Addressables profile. On next app start, the bootstrap above will pull the updated catalog and load the new prefab.
 
-Updating content in production
+### Updating content in production
 
-When you edit the remote board prefab, run Build → Update a Previous Build against the last catalog. Upload the new ServerData/<Platform> output. Clients will detect the catalog change in CheckForCatalogUpdates() and download only the changed bundles.
+When you edit the remote board prefab, run Build → Update a Previous Build against the last catalog. Upload the new `ServerData/<Platform>` output. Clients will detect the catalog change in `CheckForCatalogUpdates()` and download only the changed bundles.
 
-Notes specific to this client
+### Notes specific to this client
 
-The board prefab is loaded once per app run; we do not unload it. If you add screen transitions that recreate gameplay, call Addressables.ReleaseInstance(instance) when destroying it.
+The board prefab is loaded once per app run; we do not unload it. If you add screen transitions that recreate gameplay, call `Addressables.ReleaseInstance(instance)` when destroying it.
 
 Errors during init surface as a user toast; the game can still connect (UI is local), but gameplay will not spawn until the prefab loads successfully.
 
----
 
+---
 ## Configuration
 
 ### GameConfigSO
@@ -114,13 +118,9 @@ Errors during init surface as a user toast; the game can still connect (UI is lo
 The `GameConfigSO` ScriptableObject centralizes client defaults:
 
 - Nakama defaults: scheme (http/https), host, port, server key, socket security.
-    
 - Matchmaking bounds and UI timer: `TurnTimeoutSeconds = 10`, `TickRate = 5`.
-    
 - Protocol constants: `MatchName`, `OpState = 1`, `OpMove = 2`, `OpError = 3`, `OpGameOver = 4`.
-    
 - Addressables key for the remote `GameBoard` prefab.
-    
 
 The Connect panel pre‑populates fields from the config and persists the last values in `PlayerPrefs`. Ensure the **client timer** matches the **server** timeout (10 seconds).
 
